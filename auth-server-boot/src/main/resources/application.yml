@@ -1,0 +1,178 @@
+#--------------------------------------------------------------------------------------------------------
+#apollo相关配置，可以在运行时单独指定
+#app:
+#    id: auth-server
+#apollo:
+#    meta: http://127.0.0.1:7777
+#    bootstrap:
+#        enabled: true
+#        eagerLoad:
+#            enabled: true
+#    namespaces: application-server-global,application
+#因为集成了apollo配置管理，yml所有值都可以删除，直接上传至apollo管理
+#保留此文件的目的是为了开发时更好的了解项目相关参数及调试
+
+#相关操作步骤：
+#1、首先，将yml转换成properties形式，网址：https://www.toyaml.com/index.html
+#2、然后，将转换后的properties参数直接复制到相应项目中即可，可以直接使用apollo中的“文本”功能。
+#3、然后，点击发布。
+#4、最后，运行项目时指定相应的启动参数，例如：java -jar -Xms256m -Xmx256m auth_server.jar -Denv=DEV -Dapollo.meta=http://127.0.0.1:8080
+
+#以下是apollo client相关参数
+#AppId,最好在apollo中配置成项目名，这样便于维护
+#1.-Dapp.id=auth-server
+#这里可以配置自己的环境，如DEV/SIT/FAT/UAT/PRO等，也可以配置为LOCAL，如果配置为LOCAL则从本地文件读取，配置文件路径为项目的classpath:/META-INF/config/相应namespace.properties
+#2.-Denv=DEV
+#env 环境对应的meta-service地址
+#3.-Dapollo.meta=http://127.0.0.1:8080
+# 配置的本地缓存地址
+#4.-Dapollo.cacheDir=/work/temp/cache/auth_server/appollo
+# 当有多个集群是配置集群名称，默认为default，当配置集群之后，如果Apollo在指定集群获取不到配置数据，则还会去默认集群获取
+#5.-Dapollo.cluster=default
+#--------------------------------------------------------------------------------------------------------
+#如果使用Apollo，以下配置可以删除
+server:
+  port: 8401
+  
+#spring配置
+spring:
+  application:
+    name: auth-server
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      auto-commit: true
+      #connection-test-query: SELECT 1
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      maximum-pool-size: 10
+      minimum-idle: 5
+      pool-name: ${spring.application.name}-HikariCP
+    password: 1234qwer1234
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:mysql://182.92.152.103:3306/auth?useAffectedRows=true&queryInterceptors=brave.mysql8.TracingQueryInterceptor&exceptionInterceptors=brave.mysql8.TracingExceptionInterceptor&zipkinServiceName=mysql-auth
+    username: root
+  cloud:
+    consul:
+      discovery:
+        deregister: true
+        enabled: true
+        health-check-critical-timeout: 10s
+        health-check-interval: 15s
+        health-check-path: /actuator/health
+        instance-id: ${spring.application.name}:${spring.cloud.client.ip-address}
+        prefer-ip-address: true
+        register: true
+      host: localhost
+      port: 8500
+  redis:
+    host: 123.56.227.95
+    port: 6614
+    database: 1
+    password: AH2u64OX[K-/N91Ms
+    lettuce: # lettuce基于netty，线程安全，支持并发
+      pool:
+        max-active: 50
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+      
+  jackson:
+    date-format: yyyy-MM-dd hh:mm:ss
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+    time-zone: GMT+8
+  main:
+    allow-bean-definition-overriding: true
+  sleuth:
+    enabled: true
+    sampler:
+      probability: 1  # 设置抽样采集率为100%，默认为0.1，即10%   
+    async:
+      enabled: true
+    feign:
+      enabled: true
+    rpc:
+      enabled: true
+    circuitbreaker:
+      enabled: true
+    function:
+      enabled: true
+    http:
+      enabled: true
+      
+#zipkin上报   
+  zipkin:
+    base-url: http://182.92.152.103:9411
+    sender:
+        type: web
+    enabled: true
+  #security:
+    #user:
+      #name: actuator
+      #password: actuator
+      #roles: ACTUATOR_ADMIN
+      
+#加密
+jasypt:
+  encryptor:
+    password: www.candledrums.com
+    
+#mapper配置
+mapper:
+  identity: MYSQL
+  mappers: com.cds.base.dal.dao.BaseDAO
+  not-empty: false
+  
+#分页插件
+pagehelper:
+  helper-dialect: mysql
+  pageSizeZero: false
+  params: count=countSql
+  reasonable: false
+  support-methods-arguments: true
+
+#信息
+info:
+  app:
+    name: ${spring.application.name}
+    description: auth server
+    version: 1.0
+    encoding: UTF-8
+    java:
+      version: JDK 1.8
+#监控
+management:
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+    metrics:
+      enabled: true
+  endpoints:
+    jmx:
+      exposure:
+        include: health,info
+    web:
+      exposure:
+        exclude: env
+        include: health,info,beans,auditevents,httptrace,mappings,scheduledtasks,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+#日志
+logging:
+  config: classpath:logback-spring.xml
+
+ignore:
+ urls:
+   - /authentication/**
+   - /**/*.css
+   - /signin
+   - /signup
+   - /mobile/token
+   - /oauth/**
+   - /code/**
